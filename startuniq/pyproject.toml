@@ -1,6 +1,6 @@
 [project]
 name = "startuniq"
-version = "0.0.1"
+version = "0.0.2"
 description = "Start a remote program only if it is not already running, If it is running, ask the user whether to kill it or not."
 dependencies = []
 
