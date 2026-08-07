@@ -4,7 +4,7 @@ If it is running, ask the user whether to kill it or not.
 Usage:
     startuniq.py -s RemoteHost Program [ProgramArgs ...]
 """
-__version__ = 'v0.0.1 2026-08-07'#
+__version__ = 'v0.0.2 2026-08-07'# do not use pgrep -x.
 
 import argparse
 import shlex
@@ -68,7 +68,8 @@ def run_ssh(host: str, remote_cmd: str) -> subprocess.CompletedProcess[str]:
 
 def kill_remote_program(host: str, program_name: str) -> bool:
     """Kill remote program by exact full command line match."""
-    kill_cmd = f"pkill -f -x {shlex.quote(program_name)}"
+    kill_cmd = f"pkill -f {shlex.quote(program_name)}"
+    #print(f"Attempting to kill remote program on {host}: {kill_cmd}")
     result = run_ssh(host, kill_cmd)
     if result.returncode == 0:
         print(f"Killed on {host}: {program_name}")
@@ -89,6 +90,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         epilog=__version__)
     parser.add_argument("-s", "--server", default=Hostname, help="Remote host")
+    parser.add_argument("-p", "--process", default=None, help="Process name to check (default: full command line)")
     parser.add_argument("program", nargs='*', help="Program to start")
     args = parser.parse_args(argv)
 
@@ -101,19 +103,20 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv if argv is not None else sys.argv[1:])
     host = args.server
     program_argv = args.program
-    program_name = ' '.join(program_argv)
-    check_cmd = f"pgrep -c -f -x {shlex.quote(program_name)}"
+    process_name = args.process if args.process else ' '.join(program_argv)
+    check_cmd = f"pgrep -c -f {shlex.quote(process_name)}"
 
     # Run the check command on the remote host
     check_result = run_ssh(host, check_cmd)
-    #print(f"Check result: returncode={check_result.returncode}, stdout={check_result.stdout.strip()}, stderr={check_result.stderr.strip()}")
-    if check_result.returncode == 0:
+    stdout = check_result.stdout.strip()
+    #print(f"Check result for {check_cmd}: returncode={check_result.returncode}, stdout={stdout}, stderr={check_result.stderr.strip()}")
+    if int(stdout) > 1:
         do_kill = show_running_dialog(
-            f"'{program_name}' is already running on {host}.\n\n"
+            f"'{process_name}' is already running on {host}.\n\n"
             "Press Kill to terminate it, or Cancel to exit."
         )
         if do_kill:
-            kill_remote_program(host, program_name)
+            kill_remote_program(host, process_name)
         return 1
 
     if check_result.returncode not in (0, 1):
