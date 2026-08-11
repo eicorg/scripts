@@ -4,8 +4,9 @@ If it is running, ask the user whether to kill it or not.
 Usage:
     startuniq.py -s RemoteHost Program [ProgramArgs ...]
 """
-__version__ = 'v0.0.2 2026-08-07'# do not use pgrep -x.
+__version__ = 'v0.0.3 2026-08-11'# 
 
+import time
 import argparse
 import shlex
 import subprocess
@@ -16,47 +17,34 @@ import tkinter as tk
 Hostname = socket.gethostname()
 print(f"Hostname: {Hostname}")
 
-def show_running_dialog(message: str) -> bool:
-    """Show a dialog with Kill/Cancel. Return True when Kill is pressed."""
-    try:
+class KillStartDialog:
+    def __init__(self, parent, text):
+        self.top = tk.Toplevel(parent)
+        self.top.title('Alert')
+        self.result = None
 
-        result = {"kill": False}
+        # Add label
+        label = tk.Label(self.top, text=text)
+        label.pack(padx=20, pady=20)
 
-        root = tk.Tk()
-        root.title("Program already running")
-        root.attributes("-topmost", True)
-        root.resizable(False, False)
+        # Add Kill button
+        btn_kill = tk.Button(self.top, text="Kill", command=self.on_kill, fg="red")
+        btn_kill.pack(side=tk.LEFT, padx=20, pady=10)
 
-        frame = tk.Frame(root, padx=16, pady=12)
-        frame.pack(fill=tk.BOTH, expand=True)
+        # Add Start button
+        btn_start = tk.Button(self.top, text="Start anyway", command=self.on_start)
+        btn_start.pack(side=tk.RIGHT, padx=20, pady=10)
 
-        label = tk.Label(frame, text=message, justify=tk.LEFT, wraplength=420)
-        label.pack(anchor="w", pady=(0, 12))
-
-        buttons = tk.Frame(frame)
-        buttons.pack(anchor="e")
-
-        def on_kill() -> None:
-            result["kill"] = True
-            root.destroy()
-
-        def on_cancel() -> None:
-            result["kill"] = False
-            root.destroy()
-
-        tk.Button(buttons, text="Kill", width=10, command=on_kill).pack(side=tk.LEFT, padx=(0, 8))
-        tk.Button(buttons, text="Cancel", width=10, command=on_cancel).pack(side=tk.LEFT)
-
-        root.protocol("WM_DELETE_WINDOW", on_cancel)
-        root.mainloop()
-        return result["kill"]
-    except Exception:
-        print(message, file=sys.stderr)
-        try:
-            answer = input("Kill remote process? [y/N]: ").strip().lower()
-            return answer in ("y", "yes")
-        except Exception:
-            return False
+        # Make window modal
+        self.top.grab_set()
+        
+    def on_kill(self):
+        self.result = "kill"
+        self.top.destroy()
+        
+    def on_start(self):
+        self.result = "start"
+        self.top.destroy()
 
 def run_ssh(host: str, remote_cmd: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
@@ -71,24 +59,14 @@ def kill_remote_program(host: str, program_name: str) -> bool:
     kill_cmd = f"pkill -f {shlex.quote(program_name)}"
     #print(f"Attempting to kill remote program on {host}: {kill_cmd}")
     result = run_ssh(host, kill_cmd)
-    if result.returncode == 0:
-        print(f"Killed on {host}: {program_name}")
-        return True
-
-    if result.returncode == 1:
-        print(f"No matching process found to kill on {host}: {program_name}")
-        return False
-
-    print(
-        f"Failed to kill remote process on {host}: {result.stderr.strip()}",
-        file=sys.stderr,
-    )
-    return False
+    print(f'Executed on {host}: {kill_cmd}')
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Start remote program uniquely",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         epilog=__version__)
+    parser.add_argument("-S", "--sleep", default=0.1, type=float, help=
+      'delay')
     parser.add_argument("-s", "--server", default=Hostname, help="Remote host")
     parser.add_argument("-p", "--process", default=None, help="Process name to check (default: full command line)")
     parser.add_argument("program", nargs='*', help="Program to start")
@@ -108,16 +86,23 @@ def main(argv: list[str] | None = None) -> int:
 
     # Run the check command on the remote host
     check_result = run_ssh(host, check_cmd)
+    time.sleep(args.sleep)
+    #print(f'check_result: {check_result}')
     stdout = check_result.stdout.strip()
     #print(f"Check result for {check_cmd}: returncode={check_result.returncode}, stdout={stdout}, stderr={check_result.stderr.strip()}")
     if int(stdout) > 1:
-        do_kill = show_running_dialog(
-            f"'{process_name}' is already running on {host}.\n\n"
-            "Press Kill to terminate it, or Cancel to exit."
-        )
-        if do_kill:
+        txt = (f"'{process_name}' is already running on {host}.\n\n"
+        "Press Kill to terminate it, or Start to start it.")
+        
+        root = tk.Tk()
+        root.withdraw() # Hide main window for test
+
+        dialog = KillStartDialog(root, txt)
+        root.wait_window(dialog.top)
+        #print("User chose:", dialog.result)
+        if dialog.result == 'kill':
             kill_remote_program(host, process_name)
-        return 1
+            return 1
 
     if check_result.returncode not in (0, 1):
         print(
@@ -129,12 +114,10 @@ def main(argv: list[str] | None = None) -> int:
     # Start the program in the background on the remote host
     launch_cmd = " ".join(shlex.quote(part) for part in program_argv)
     start_cmd = f"{launch_cmd}&"
-    #print(f"Starting program on {host}: {start_cmd}")
     start_result = subprocess.Popen(["ssh", host, start_cmd], text=True,)
 
     #print(f"Start result: returncode={start_result.returncode}, stdout={start_result.stdout.strip()}, stderr={start_result.stderr.strip()}")
-    print(f"Start result: returncode={start_result.returncode}")
-
+    #print(f"Start result: returncode={start_result.returncode}")
     print(f"Started on {host}: {' '.join(program_argv)}")
     return 0
 
