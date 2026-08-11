@@ -1,10 +1,15 @@
 [project]
 name = "startuniq"
-version = "0.0.2"
+version = "0.0.3"
 description = "Start a remote program only if it is not already running, If it is running, ask the user whether to kill it or not."
+readme = "README.md"
 dependencies = []
+
+requires-python = ">=3.7"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[project.urls]
+"Homepage" = "https://github.com/eicorg/scripts/tree/main/startuniq"
