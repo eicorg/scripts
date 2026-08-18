@@ -1,0 +1,22 @@
+[project]
+name = "pvaccesslist"
+version = "0.0.5"
+license = "BSD-3-Clause"
+authors = [
+  { name="Andrey Sukhanov", email="sukhanov@bnl.gov" },
+]
+description = "List active EPICS PVAccess PVs by querying discovered PVA servers"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: POSIX :: Linux",
+]
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.urls]
+"Homepage" = "https://github.com/eicorg/scripts/tree/main/pvaccesslist"
