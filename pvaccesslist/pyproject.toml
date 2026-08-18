@@ -1,6 +1,6 @@
 [project]
 name = "pvaccesslist"
-version = "0.0.6"
+version = "0.0.7"
 license = "BSD-3-Clause"
 authors = [
   { name="Andrey Sukhanov", email="sukhanov@bnl.gov" },

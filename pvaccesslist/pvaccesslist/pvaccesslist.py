@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """List active EPICS PVAccess PVs by querying discovered PVA servers."""
-__version__ = 'v0.0.6 2026-08-18'# added option: -d to print only unique device names
+__version__ = 'v0.0.7 2026-08-18'# device name is the part of PV name before the last colon
 import re
 import subprocess
 import sys
@@ -99,7 +99,7 @@ def main() -> int:
         result = run_pvlist([endpoint])
         if device_only:
             for pvname in extract_pv_names(result.stdout):
-                device = pvname.split(":")[0]
+                device = pvname.rsplit(":", 1)[0]
                 if device and device not in devices_seen:
                     devices_seen.add(device)
                     devices.append(device)

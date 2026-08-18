@@ -19,7 +19,7 @@ The script works as follows:
 	- `python3 -m pvaccesslist.pvaccesslist -h`
 - List PVs to terminal:
 	- `python3 -m pvaccesslist.pvaccesslist`
-- List of unique devices:
+- List of devices:
     - `python3 -m pvaccesslist.pvaccesslist -d`
 - Save PV list to file:
 	- `python3 -m pvaccesslist.pvaccesslist > pvs.txt`
